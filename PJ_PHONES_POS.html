@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PJ PHONES POS</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#17202a}
+header{background:#111827;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+header h1{margin:0;font-size:22px}.wrap{max-width:1200px;margin:auto;padding:16px}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:600}
+nav button{background:#e5e7eb}.active,.primary{background:#2563eb!important;color:#fff}
+.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px #00000012;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stat{padding:16px;border-radius:10px;background:#f8fafc;border:1px solid #e5e7eb}.stat b{font-size:24px;display:block;margin-top:6px}
+input,select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;margin:5px 0 10px}
+label{font-size:13px;font-weight:600}table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
+.right{text-align:right}.hidden{display:none}.danger{background:#fee2e2;color:#991b1b}.small{font-size:12px;color:#6b7280}
+#receipt{max-width:380px;margin:auto}.receipt-head{text-align:center}.total{font-size:20px;font-weight:700}
+@media(max-width:600px){.wrap{padding:10px}header h1{font-size:18px}}
+#login{position:fixed;inset:0;background:#f4f6f8;display:flex;align-items:center;justify-content:center;z-index:99}.loginbox{background:#fff;padding:24px;border-radius:14px;width:min(360px,92%);box-shadow:0 8px 30px #0002}.loginbox h2{text-align:center;margin-top:0}.err{color:#b91c1c;font-size:13px;min-height:18px}
+</style>
+</head>
+<body>
+<div id="login"><div class="loginbox">
+<h2>📱 PJ PHONES</h2><p class="small" style="text-align:center">POS Login</p>
+<label>Username</label><input id="loginUser" autocomplete="username">
+<label>Password</label><input id="loginPass" type="password" autocomplete="current-password">
+<div class="err" id="loginErr"></div>
+<button class="primary" style="width:100%" onclick="login()">Login</button>
+</div></div>
+<header><h1>📱 PJ PHONES POS</h1><span><span id="clock"></span> &nbsp; <button onclick="logout()" style="padding:6px 9px;background:#374151;color:#fff">Logout</button></span></header>
+<div class="wrap">
+<nav>
+<button class="active" onclick="show('dash',this)">Dashboard</button>
+<button onclick="show('products',this)">Products</button>
+<button onclick="show('sale',this)">New Sale</button>
+<button onclick="show('sales',this)">Sales</button>
+</nav>
+
+<section id="dash">
+<div class="grid">
+<div class="stat">Today's Sales<b id="todaySales">KSh 0</b></div>
+<div class="stat">Today's Profit<b id="todayProfit">KSh 0</b></div>
+<div class="stat">Products in Stock<b id="stockCount">0</b></div>
+<div class="stat">Transactions<b id="todayTx">0</b></div>
+</div>
+<div class="card"><h3>Quick actions</h3><button class="primary" onclick="document.querySelectorAll('nav button')[2].click()">➕ New Sale</button> <button onclick="document.querySelectorAll('nav button')[1].click()">📦 Add Product</button></div>
+</section>
+
+<section id="products" class="hidden">
+<div class="card"><h3>Add Product / Phone</h3>
+<div class="grid">
+<div><label>Brand</label><input id="brand" placeholder="TECNO"></div>
+<div><label>Model / Product</label><input id="model" placeholder="Spark 50"></div>
+<div><label>IMEI / Serial (optional)</label><input id="imei" placeholder="IMEI"></div>
+<div><label>Buying price (KSh)</label><input id="buy" type="number" min="0"></div>
+<div><label>Selling price (KSh)</label><input id="sell" type="number" min="0"></div>
+<div><label>Quantity</label><input id="qty" type="number" min="1" value="1"></div>
+</div>
+<button class="primary" onclick="addProduct()">Save Product</button>
+</div>
+<div class="card"><h3>Inventory</h3><input id="prodSearch" placeholder="Search products..." oninput="renderProducts()"><div id="productTable"></div></div>
+</section>
+
+<section id="sale" class="hidden">
+<div class="card"><h3>New Sale</h3>
+<div class="grid"><div><label>Product</label><select id="productSelect" onchange="syncPrice()"></select></div>
+<div><label>Quantity</label><input id="saleQty" type="number" min="1" value="1" oninput="calcSale()"></div>
+<div><label>Discount (KSh)</label><input id="discount" type="number" min="0" value="0" oninput="calcSale()"></div>
+<div><label>Payment</label><select id="payment"><option>Cash</option><option>M-Pesa</option><option>Card</option></select></div></div>
+<div class="right"><p>Subtotal: <b id="subtotal">KSh 0</b></p><p>Discount: <b id="discShow">KSh 0</b></p><p class="total">Total: <span id="saleTotal">KSh 0</span></p></div>
+<button class="primary" onclick="completeSale()">Complete Sale & Print Receipt</button>
+</div>
+</section>
+
+<section id="sales" class="hidden">
+<div class="card"><h3>Sales History</h3><div id="salesTable"></div></div>
+</section>
+
+<section id="receiptSection" class="hidden">
+<div class="card" id="receipt"></div>
+<div class="right"><button onclick="window.print()">🖨️ Print</button><button onclick="show('dash',document.querySelector('nav button'))">Close</button></div>
+</section>
+</div>
+<script>
+const keyP='pjphones_products',keyS='pjphones_sales';
+const LOGIN_USER='0711313136', LOGIN_PASS='0708439660';
+function login(){if(loginUser.value===LOGIN_USER && loginPass.value===LOGIN_PASS){sessionStorage.setItem('pj_logged','1');login.style.display='none';}else loginErr.textContent='Incorrect username or password.'}
+function logout(){sessionStorage.removeItem('pj_logged');location.reload()}
+if(sessionStorage.getItem('pj_logged')==='1') login.style.display='none';
+let products=JSON.parse(localStorage.getItem(keyP)||'[]'),sales=JSON.parse(localStorage.getItem(keyS)||'[]');
+
+function money(n){return 'KSh '+Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2})}
+function save(){localStorage.setItem(keyP,JSON.stringify(products));localStorage.setItem(keyS,JSON.stringify(sales));}
+function show(id,btn){
+document.querySelectorAll('section').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');
+document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');
+if(id==='products')renderProducts();if(id==='sale')renderSelect();if(id==='sales')renderSales();updateDash();
+}
+function addProduct(){
+let p={id:Date.now(),brand:brand.value.trim(),model:model.value.trim(),imei:imei.value.trim(),buy:+buy.value||0,sell:+sell.value||0,qty:+qty.value||1};
+if(!p.brand||!p.model||!p.sell){alert('Enter brand, product/model and selling price.');return}
+products.push(p);save();['brand','model','imei','buy','sell'].forEach(x=>document.getElementById(x).value='');qty.value=1;renderProducts();alert('Product saved.');
+}
+function renderProducts(){
+let q=(prodSearch.value||'').toLowerCase();let arr=products.filter(p=>(p.brand+' '+p.model+' '+p.imei).toLowerCase().includes(q));
+productTable.innerHTML=arr.length?'<table><tr><th>Product</th><th>IMEI</th><th>Buy</th><th>Sell</th><th>Qty</th><th></th></tr>'+arr.map(p=>`<tr><td>${p.brand} ${p.model}</td><td>${p.imei||'-'}</td><td>${money(p.buy)}</td><td>${money(p.sell)}</td><td>${p.qty}</td><td><button class="danger" onclick="delProduct(${p.id})">Delete</button></td></tr>`).join('')+'</table>':'<p class="small">No products yet.</p>';
+}
+function delProduct(id){if(confirm('Delete this product?')){products=products.filter(p=>p.id!==id);save();renderProducts();}}
+function renderSelect(){
+productSelect.innerHTML=products.filter(p=>p.qty>0).map(p=>`<option value="${p.id}">${p.brand} ${p.model}${p.imei?' — '+p.imei:''} (${money(p.sell)}) [${p.qty}]</option>`).join('');
+calcSale();
+}
+function syncPrice(){calcSale()}
+function calcSale(){
+let p=products.find(x=>x.id==productSelect.value),q=+saleQty.value||0,d=+discount.value||0,s=p?p.sell*q:0;
+subtotal.textContent=money(s);discShow.textContent=money(d);saleTotal.textContent=money(Math.max(0,s-d));
+}
+function completeSale(){
+let p=products.find(x=>x.id==productSelect.value),q=+saleQty.value||0,d=+discount.value||0;
+if(!p||q<1||q>p.qty){alert('Insufficient stock.');return}
+let total=Math.max(0,p.sell*q-d), profit=(p.sell-p.buy)*q-d;
+p.qty-=q;let sale={id:Date.now(),date:new Date().toISOString(),product:p.brand+' '+p.model,imei:p.imei,qty:q,buy:p.buy,sell:p.sell,discount:d,total,profit,payment:payment.value};
+sales.unshift(sale);save();renderReceipt(sale);show('receiptSection');}
+function renderReceipt(s){
+receipt.innerHTML=`<div class="receipt-head"><h2>PJ PHONES</h2><div>Sales Receipt</div><div class="small">${new Date(s.date).toLocaleString()}</div></div><hr>
+<p><b>Product:</b> ${s.product}<br><b>IMEI/Serial:</b> ${s.imei||'-'}<br><b>Qty:</b> ${s.qty}<br><b>Unit price:</b> ${money(s.sell)}<br><b>Payment:</b> ${s.payment}</p>
+<hr><p class="right">Subtotal: ${money(s.sell*s.qty)}<br>Discount: ${money(s.discount)}<br><span class="total">TOTAL: ${money(s.total)}</span></p>
+<hr><div class="receipt-head">Thank you for shopping at PJ PHONES<br><span class="small">POS receipt — eTIMS integration can be added later.</span></div>`;
+}
+function renderSales(){
+salesTable.innerHTML=sales.length?'<table><tr><th>Date</th><th>Product</th><th>Qty</th><th>Total</th><th>Payment</th></tr>'+sales.map(s=>`<tr><td>${new Date(s.date).toLocaleString()}</td><td>${s.product}</td><td>${s.qty}</td><td>${money(s.total)}</td><td>${s.payment}</td></tr>`).join('')+'</table>':'<p class="small">No sales yet.</p>';
+}
+function updateDash(){
+let d=new Date().toDateString(),tod=sales.filter(s=>new Date(s.date).toDateString()===d);
+todaySales.textContent=money(tod.reduce((a,s)=>a+s.total,0));todayProfit.textContent=money(tod.reduce((a,s)=>a+s.profit,0));
+stockCount.textContent=products.reduce((a,p)=>a+p.qty,0);todayTx.textContent=tod.length;
+}
+setInterval(()=>clock.textContent=new Date().toLocaleTimeString(),1000);clock.textContent=new Date().toLocaleTimeString();updateDash();
+</script>
+</body></html>
