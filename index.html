@@ -1,1 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PJ PHONES POS</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#111827}
+header{background:#111827;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+header h1{margin:0;font-size:22px}header small{color:#d1d5db}
+.container{max-width:1200px;margin:20px auto;padding:0 15px}
+.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+.card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 10px #00000012}
+h2{margin-top:0;font-size:18px}input,select,button{width:100%;padding:11px;border:1px solid #d1d5db;border-radius:8px;font-size:15px}
+button{background:#111827;color:#fff;border:0;cursor:pointer;font-weight:bold}
+button:hover{opacity:.9}.row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.product{border:1px solid #e5e7eb;border-radius:10px;padding:12px}.product h3{margin:0 0 6px;font-size:16px}.price{font-weight:bold;margin-bottom:8px}
+.product button{background:#2563eb}
+table{width:100%;border-collapse:collapse;margin-top:10px}th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px}
+.total{font-size:22px;font-weight:bold;text-align:right;margin:15px 0}.danger{background:#dc2626}.success{background:#16a34a}.secondary{background:#6b7280}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.login{max-width:420px;margin:70px auto}.hidden{display:none}
+.stat{display:inline-block;background:#eef2ff;padding:8px 12px;border-radius:8px;margin-right:6px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="loginScreen" class="login card">
+<h1>📱 PJ PHONES POS</h1><p>Sign in to continue</p>
+<input id="username" placeholder="Username" autocomplete="username"><br><br>
+<input id="password" type="password" placeholder="Password" autocomplete="current-password"><br><br>
+<button onclick="login()">LOGIN</button>
+<p id="loginMsg" style="color:#dc2626"></p>
+</div>
 
+<div id="app" class="hidden">
+<header><div><h1>📱 PJ PHONES POS</h1><small>Sales & Inventory System</small></div>
+<button style="width:auto;padding:9px 15px" onclick="logout()">Logout</button></header>
+<div class="container">
+<div style="margin-bottom:15px">
+<span class="stat">Products: <b id="productCount">0</b></span>
+<span class="stat">Sales: <b id="salesCount">0</b></span>
+</div>
+<div class="grid">
+<section class="card">
+<h2>Products</h2>
+<div class="row"><input id="search" placeholder="Search phone/accessory..." oninput="renderProducts()">
+<select id="category" onchange="renderProducts()"><option value="">All categories</option><option>Phones</option><option>Accessories</option><option>Other</option></select>
+<button onclick="showAddProduct()">+ Add</button></div>
+<div id="products" class="products"></div>
+</section>
+<section class="card">
+<h2>Current Sale</h2>
+<div id="cart"></div>
+<div class="total">Total: KSh <span id="total">0</span></div>
+<div class="row" style="grid-template-columns:1fr 1fr">
+<select id="payment"><option>Cash</option><option>M-Pesa</option><option>Card</option></select>
+<input id="customer" placeholder="Customer name (optional)">
+</div>
+<div class="actions">
+<button class="success" onclick="completeSale()">COMPLETE SALE</button>
+<button class="danger" onclick="clearCart()">CLEAR</button>
+</div>
+<br><button class="secondary" onclick="printReceipt()">PRINT RECEIPT</button>
+</section>
+</div>
+
+<div class="card" style="margin-top:18px">
+<h2>Recent Sales</h2><div id="sales"></div>
+</div>
+</div>
+</div>
+
+<div id="addModal" class="login card hidden" style="position:fixed;z-index:5;left:0;right:0;top:30px;margin:auto">
+<h2>Add Product</h2>
+<input id="pname" placeholder="Product name"><br><br>
+<input id="pprice" type="number" placeholder="Selling price (KSh)"><br><br>
+<input id="pstock" type="number" placeholder="Stock quantity"><br><br>
+<select id="pcat"><option>Phones</option><option>Accessories</option><option>Other</option></select><br><br>
+<div class="actions"><button onclick="addProduct()">SAVE</button><button class="secondary" onclick="closeAdd()">CANCEL</button></div>
+</div>
+
+<script>
+const USER="PJPHONES";
+const PASS="0711313136";
+
+let products=JSON.parse(localStorage.getItem("pj_products")||"null")||[
+{name:"TECNO Spark 50",price:0,stock:0,category:"Phones"},
+{name:"TECNO Camon 50",price:0,stock:0,category:"Phones"},
+{name:"Phone Charger",price:0,stock:0,category:"Accessories"},
+{name:"USB Cable",price:0,stock:0,category:"Accessories"}
+];
+let cart=[],sales=JSON.parse(localStorage.getItem("pj_sales")||"[]");
+
+function save(){localStorage.setItem("pj_products",JSON.stringify(products));localStorage.setItem("pj_sales",JSON.stringify(sales))}
+function login(){
+ if(username.value===USER && password.value===PASS){loginScreen.classList.add("hidden");app.classList.remove("hidden");renderAll()}
+ else loginMsg.textContent="Incorrect username or password.";
+}
+function logout(){location.reload()}
+function renderProducts(){
+ let q=search.value.toLowerCase(),c=category.value;
+ productsEl=document.getElementById("products");
+ let list=products.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!c||p.category===c));
+ productsEl.innerHTML=list.map((p,i)=>`<div class="product"><h3>${esc(p.name)}</h3><div>${esc(p.category)}</div><div class="price">KSh ${money(p.price)}</div><div>Stock: ${p.stock}</div><br><button onclick="addToCart(${products.indexOf(p)})">ADD TO SALE</button></div>`).join("")||"<p>No products found.</p>";
+ productCount.textContent=products.length;
+}
+function addToCart(i){let p=products[i];if(p.stock<=0){alert("This product is out of stock.");return}let x=cart.find(x=>x.i===i);if(x)x.qty++;else cart.push({i,qty:1});renderCart()}
+function renderCart(){
+ cartEl=document.getElementById("cart");let total=0;
+ if(!cart.length){cartEl.innerHTML="<p>No items added.</p>";document.getElementById("total").textContent="0";return}
+ cartEl.innerHTML="<table><tr><th>Item</th><th>Qty</th><th>Price</th><th></th></tr>"+cart.map((x,n)=>{let p=products[x.i];total+=p.price*x.qty;return `<tr><td>${esc(p.name)}</td><td>${x.qty}</td><td>KSh ${money(p.price*x.qty)}</td><td><button class="danger" style="width:auto;padding:5px 9px" onclick="removeItem(${n})">×</button></td></tr>`}).join("")+"</table>";
+ document.getElementById("total").textContent=money(total);
+}
+function removeItem(n){cart.splice(n,1);renderCart()}
+function clearCart(){cart=[];renderCart()}
+function completeSale(){
+ if(!cart.length){alert("Add items to the sale first.");return}
+ for(const x of cart)if(x.qty>products[x.i].stock){alert("Not enough stock for "+products[x.i].name);return}
+ let total=cart.reduce((s,x)=>s+products[x.i].price*x.qty,0);
+ cart.forEach(x=>products[x.i].stock-=x.qty);
+ sales.unshift({date:new Date().toLocaleString(),customer:customer.value||"Walk-in",payment:payment.value,total,items:cart.map(x=>({name:products[x.i].name,qty:x.qty,price:products[x.i].price}))});
+ save();cart=[];customer.value="";renderAll();alert("Sale completed successfully.");
+}
+function renderSales(){
+ salesEl=document.getElementById("sales");
+ if(!sales.length){salesEl.innerHTML="<p>No sales recorded yet.</p>";salesCount.textContent="0";return}
+ salesEl.innerHTML="<table><tr><th>Date</th><th>Customer</th><th>Payment</th><th>Total</th></tr>"+sales.slice(0,20).map(s=>`<tr><td>${esc(s.date)}</td><td>${esc(s.customer)}</td><td>${esc(s.payment)}</td><td>KSh ${money(s.total)}</td></tr>`).join("")+"</table>";
+ salesCount.textContent=sales.length;
+}
+function showAddProduct(){addModal.classList.remove("hidden")}
+function closeAdd(){addModal.classList.add("hidden")}
+function addProduct(){
+ let name=pname.value.trim(),price=Number(pprice.value),stock=Number(pstock.value);
+ if(!name||price<0||stock<0){alert("Enter valid product details.");return}
+ products.push({name,price,stock,category:pcat.value});save();pname.value=pprice.value=pstock.value="";closeAdd();renderAll();
+}
+function printReceipt(){
+ if(!cart.length){alert("Add items to the sale first.");return}
+ let total=cart.reduce((s,x)=>s+products[x.i].price*x.qty,0);
+ let lines=cart.map(x=>`${products[x.i].name} x${x.qty} = KSh ${money(products[x.i].price*x.qty)}`).join("<br>");
+ let w=window.open("","_blank");w.document.write(`<html><body style="font-family:Arial;width:300px"><h2>PJ PHONES</h2><p>${new Date().toLocaleString()}</p>${lines}<hr><h3>Total: KSh ${money(total)}</h3><p>Thank you for shopping with PJ PHONES.</p></body></html>`);w.print();w.close();
+}
+function renderAll(){renderProducts();renderCart();renderSales()}
+function money(n){return Number(n).toLocaleString("en-KE",{minimumFractionDigits:0,maximumFractionDigits:2})}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+</script>
+</body>
+</html>
